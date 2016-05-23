@@ -11,20 +11,20 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mule.functional.functional.FlowAssert.verify;
-import org.mule.test.AbstractIntegrationTestCase;
 import org.mule.functional.junit4.runners.RunnerDelegateTo;
 import org.mule.runtime.core.MessageExchangePattern;
-import org.mule.runtime.core.api.MessagingException;
 import org.mule.runtime.core.api.MuleEvent;
 import org.mule.runtime.core.api.context.MuleContextBuilder;
 import org.mule.runtime.core.api.processor.ProcessingStrategy;
 import org.mule.runtime.core.config.DefaultMuleConfiguration;
 import org.mule.runtime.core.construct.flow.DefaultFlowProcessingStrategy;
 import org.mule.runtime.core.processor.strategy.NonBlockingProcessingStrategy;
+import org.mule.test.AbstractIntegrationTestCase;
 
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -102,7 +102,7 @@ public class NonBlockingFullySupportedFunctionalTestCase extends AbstractIntegra
         verify("childSyncFlowChild");
     }
 
-    @Test(expected = MessagingException.class)
+    @Test
     public void childAsyncFlow() throws Exception
     {
         flowRunner("childAsyncFlow").withPayload(TEST_MESSAGE).nonBlocking().withExchangePattern
@@ -245,10 +245,29 @@ public class NonBlockingFullySupportedFunctionalTestCase extends AbstractIntegra
     }
 
     @Test
+    @Ignore("RX")
     public void catchExceptionStrategy() throws Exception
     {
         flowRunner("catchExceptionStrategy").withPayload(TEST_MESSAGE).withExchangePattern(getMessageExchnagePattern()).nonBlocking().run();
         verify("catchExceptionStrategyChild");
+    }
+
+    @Test
+    public void firstSuccessful() throws Exception
+    {
+        flowRunner("firstSuccessful").withPayload(TEST_MESSAGE).nonBlocking().run();
+    }
+
+    @Test
+    public void roundRobin() throws Exception
+    {
+        flowRunner("roundRobin").withPayload(TEST_MESSAGE).nonBlocking().run();
+    }
+
+    @Test
+    public void all() throws Exception
+    {
+        flowRunner("all").withPayload(TEST_MESSAGE).nonBlocking().run();
     }
 
     protected MessageExchangePattern getMessageExchnagePattern()
