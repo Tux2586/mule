@@ -7,14 +7,11 @@
 package org.mule.test.construct;
 
 import static java.util.stream.Collectors.toList;
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.mule.runtime.core.processor.AsyncInterceptingMessageProcessor.SYNCHRONOUS_NONBLOCKING_EVENT_ERROR_MESSAGE;
-import org.mule.test.AbstractIntegrationTestCase;
 import org.mule.runtime.core.api.MessagingException;
 import org.mule.runtime.core.api.MuleEvent;
 import org.mule.runtime.core.api.MuleException;
@@ -24,6 +21,7 @@ import org.mule.runtime.core.construct.Flow;
 import org.mule.runtime.core.util.IOUtils;
 import org.mule.tck.SensingNullRequestResponseMessageProcessor;
 import org.mule.tck.junit4.rule.DynamicPort;
+import org.mule.test.AbstractIntegrationTestCase;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +43,8 @@ public class FlowRefTestCase extends AbstractIntegrationTestCase
     private static String FLOW2_SENSING_PROCESSOR_NAME = "NonBlockingFlow2SensingProcessor";
     private static String TO_SYNC_FLOW1_SENSING_PROCESSOR_NAME = "NonBlockingToSyncFlow1SensingProcessor";
     private static String TO_SYNC_FLOW2_SENSING_PROCESSOR_NAME = "NonBlockingToSyncFlow2SensingProcessor";
+    private static String TO_ASYNC_FLOW1_SENSING_PROCESSOR_NAME = "NonBlockingToAsyncFlow1SensingProcessor";
+    private static String TO_ASYNC_FLOW2_SENSING_PROCESSOR_NAME = "NonBlockingToAsyncFlow2SensingProcessor";
     private static String ERROR_MESSAGE = "ERROR";
 
     @Override
@@ -188,8 +188,16 @@ public class FlowRefTestCase extends AbstractIntegrationTestCase
         Response response = Request.Post(String.format("http://localhost:%s/%s", port.getNumber(), "nonBlockingFlowRefToAsyncFlow"))
                 .connectTimeout(RECEIVE_TIMEOUT).bodyString(TEST_MESSAGE, ContentType.TEXT_PLAIN).execute();
         HttpResponse httpResponse = response.returnResponse();
-        assertThat(httpResponse.getStatusLine().getStatusCode(), is(500));
-        assertThat(IOUtils.toString(httpResponse.getEntity().getContent()), containsString(SYNCHRONOUS_NONBLOCKING_EVENT_ERROR_MESSAGE));
+        assertThat(httpResponse.getStatusLine().getStatusCode(), is(200));
+        assertThat(IOUtils.toString(httpResponse.getEntity().getContent()), is(TEST_MESSAGE));
+
+        SensingNullRequestResponseMessageProcessor flow1RequestResponseProcessor = muleContext.getRegistry()
+                .lookupObject(TO_ASYNC_FLOW1_SENSING_PROCESSOR_NAME);
+        SensingNullRequestResponseMessageProcessor flow2RequestResponseProcessor = muleContext.getRegistry()
+                .lookupObject(TO_ASYNC_FLOW2_SENSING_PROCESSOR_NAME);
+        assertThat(flow1RequestResponseProcessor.requestThread, not(equalTo(flow1RequestResponseProcessor.responseThread)));
+        assertThat(flow2RequestResponseProcessor.requestThread, not(equalTo(flow2RequestResponseProcessor
+                                                                                    .responseThread)));
     }
 
     @Test
