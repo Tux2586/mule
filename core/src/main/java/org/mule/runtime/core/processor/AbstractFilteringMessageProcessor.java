@@ -6,7 +6,6 @@
  */
 package org.mule.runtime.core.processor;
 
-import static reactor.core.Exceptions.propagate;
 import org.mule.runtime.core.api.MessagingException;
 import org.mule.runtime.core.api.MuleEvent;
 import org.mule.runtime.core.api.MuleException;
@@ -15,9 +14,6 @@ import org.mule.runtime.core.api.processor.InterceptingMessageProcessor;
 import org.mule.runtime.core.api.processor.MessageProcessor;
 import org.mule.runtime.core.api.routing.filter.FilterUnacceptedException;
 import org.mule.runtime.core.config.i18n.CoreMessages;
-import org.mule.runtime.core.util.rx.FluxNullSafeMap;
-
-import org.reactivestreams.Publisher;
 
 /**
  * Abstract {@link InterceptingMessageProcessor} that can be easily be extended and
@@ -38,28 +34,14 @@ public abstract class AbstractFilteringMessageProcessor extends AbstractIntercep
      */
     protected MessageProcessor unacceptedMessageProcessor;
 
-    @Override
-    public Publisher<MuleEvent> apply(Publisher<MuleEvent> publisher)
-    {
-        return new FluxNullSafeMap(publisher, this, event -> {
-            try
-            {
-                boolean accepted = accept(event);
-                if (!accepted)
-                {
-                    return handleUnaccepted(event);
-                }
-                else
-                {
-                    return event;
-                }
-            }
-            catch (Exception e)
-            {
-                throw propagate(filterFailureException(event, e));
-            }
-        }).as(next);
-    }
+//    @Override
+//    public Publisher<MuleEvent> apply(Publisher<MuleEvent> publisher)
+//    {
+//        return from(publisher).transform(flux -> s -> new NullSafeMapOperatorOld<MuleEvent, MuleEvent>(s,
+//                                                                                                       checkedFunction
+//                                                                                                            (event ->
+//                                                                                                                     accept(event) ? event : handleUnaccepted(event))));
+//    }
 
     @Override
     public MuleEvent process(MuleEvent event) throws MuleException

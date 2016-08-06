@@ -50,7 +50,7 @@ public class ResponseMessageProcessorAdapter extends AbstractRequestResponseMess
     }
 
     @Override
-    protected Publisher<MuleEvent> processResponseAsStream(MuleEvent response, MuleEvent request) throws MuleException
+    protected Publisher<MuleEvent> processResponseAsStream(MuleEvent response, MuleEvent request)
     {
         if (responseProcessor == null || !isEventValid(response))
         {
@@ -58,7 +58,7 @@ public class ResponseMessageProcessorAdapter extends AbstractRequestResponseMess
         }
         else
         {
-            return just(response).as(responseProcessor);
+            return just(response).transform(responseProcessor);
         }
     }
 

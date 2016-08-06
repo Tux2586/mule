@@ -9,10 +9,11 @@ package org.mule.runtime.core.api.processor;
 import org.mule.runtime.core.api.MuleEvent;
 import org.mule.runtime.core.api.MuleException;
 import org.mule.runtime.core.util.rx.FluxNullSafeMap;
+import org.reactivestreams.Publisher;
 
 import java.util.function.Function;
 
-import org.reactivestreams.Publisher;
+import static org.mule.runtime.core.util.rx.Exceptions.checkedFunction;
 
 /**
  * Processes {@link MuleEvent}'s.
@@ -40,7 +41,7 @@ public interface MessageProcessor extends Function<Publisher<MuleEvent>, Publish
     MuleEvent process(MuleEvent event) throws MuleException;
 
     /**
-     * Applies a {@link Publisher<MuleEvent>} function transforms a stream of {@link MuleEvent}'s.
+     * Applies a {@link Publisher<MuleEvent>} function transforming a stream of {@link MuleEvent}'s.
      * <p>
      * The default implementation delegates to {@link #process(MuleEvent)} and will i) propagte any exception thrown ii)
      * drop events if invocation of {@link #process(MuleEvent)} returns null.
@@ -51,7 +52,7 @@ public interface MessageProcessor extends Function<Publisher<MuleEvent>, Publish
     @Override
     default Publisher<MuleEvent> apply(Publisher<MuleEvent> publisher)
     {
-        return new FluxNullSafeMap(publisher, this, event -> process(event));
+        return new FluxNullSafeMap<>(publisher,checkedFunction(event -> process(event)));
     }
 
     /**
@@ -63,6 +64,7 @@ public interface MessageProcessor extends Function<Publisher<MuleEvent>, Publish
      * dependingon the {@link ProcessingStrategy}.
      *
      * @return true is this implementation may block
+     * // TODO REPLACE WITH ENUM TO SUPPORT IO/CPU/NONE and not just boolean
      */
     default boolean isBlocking()
     {

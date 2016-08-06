@@ -27,7 +27,6 @@ import org.mule.runtime.core.api.processor.MessageProcessor;
 import org.mule.runtime.core.config.i18n.CoreMessages;
 import org.mule.runtime.core.context.notification.AsyncMessageNotification;
 import org.mule.runtime.core.execution.TransactionalErrorHandlingExecutionTemplate;
-import org.mule.runtime.core.interceptor.ProcessingTimeInterceptor;
 import org.mule.runtime.core.transaction.MuleTransactionConfig;
 import org.mule.runtime.core.work.AbstractMuleEventWork;
 import org.mule.runtime.core.work.MuleWorkManager;
@@ -126,14 +125,14 @@ public class AsyncInterceptingMessageProcessor extends AbstractInterceptingMessa
             }
 
             MuleEvent response;
-            if (event.getFlowConstruct() != null)
-            {
-                response = new ProcessingTimeInterceptor(next, event.getFlowConstruct()).process(event);
-            }
-            else
-            {
+            //if (event.getFlowConstruct() != null)
+            //{
+            //    response = new ProcessingTimeInterceptor(next, event.getFlowConstruct()).process(event);
+            //}
+            //else
+            //{
                 response = processNext(event);
-            }
+            //}
             return response;
         }
     }

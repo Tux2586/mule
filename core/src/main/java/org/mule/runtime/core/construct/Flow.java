@@ -34,7 +34,6 @@ import org.mule.runtime.core.config.i18n.CoreMessages;
 import org.mule.runtime.core.construct.flow.DefaultFlowProcessingStrategy;
 import org.mule.runtime.core.construct.processor.FlowConstructStatisticsMessageProcessor;
 import org.mule.runtime.core.execution.ErrorHandlingExecutionTemplate;
-import org.mule.runtime.core.interceptor.ProcessingTimeInterceptor;
 import org.mule.runtime.core.management.stats.FlowConstructStatistics;
 import org.mule.runtime.core.processor.strategy.AbstractThreadingProfileProcessingStrategy;
 import org.mule.runtime.core.processor.strategy.AsynchronousProcessingStrategy;
@@ -165,7 +164,7 @@ public class Flow extends AbstractPipeline implements MessageProcessor, StageNam
     {
         super.configurePreProcessors(builder);
         builder.chain(new ProcessIfPipelineStartedMessageProcessor());
-        builder.chain(new ProcessingTimeInterceptor());
+        //builder.chain(new ProcessingTimeInterceptor());
         builder.chain(new FlowConstructStatisticsMessageProcessor());
 
         dynamicPipelineMessageProcessor = new DynamicPipelineMessageProcessor(this);

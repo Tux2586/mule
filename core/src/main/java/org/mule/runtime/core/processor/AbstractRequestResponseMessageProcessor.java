@@ -37,55 +37,7 @@ public abstract class AbstractRequestResponseMessageProcessor extends AbstractIn
 {
 
     @Override
-    public Publisher<MuleEvent> apply(Publisher<MuleEvent> publisher)
-    {
-        Flux<Tuple2<MuleEvent, Publisher<MuleEvent>>> flux = from(publisher).map(event -> {
-            try
-            {
-                return of(event, processRequestAsStream(event));
-            }
-            catch (MuleException e)
-            {
-                if (e instanceof MessagingException)
-                {
-                    throw propagate(e);
-                }
-                else
-                {
-                    throw propagate(new MessagingException(event, e));
-                }
-            }
-        });
-        if (next != null)
-        {
-            flux = flux.map(tuple -> of(tuple.getT1(), from(applyNext(tuple.getT2()))));
-        }
-        return flux.concatMap(tuple -> from(tuple.getT2()).concatMap(event -> {
-            try
-            {
-                return processResponseAsStream(event, tuple.getT1());
-            }
-            catch (MuleException e)
-            {
-                if (e instanceof MessagingException)
-                {
-                    throw propagate(e);
-                }
-                else
-                {
-                    throw propagate(new MessagingException(tuple.getT1(), e));
-                }
-            }
-        }));
-    }
-
-    @Override
-    public final MuleEvent process(MuleEvent event) throws MuleException
-    {
-        return processBlocking(event);
-    }
-
-    protected MuleEvent processBlocking(MuleEvent event) throws MuleException
+    public MuleEvent process(MuleEvent event) throws MuleException
     {
         MessagingException exception = null;
         try
@@ -103,6 +55,17 @@ public abstract class AbstractRequestResponseMessageProcessor extends AbstractIn
         }
     }
 
+    @Override
+    public Publisher<MuleEvent> apply(Publisher<MuleEvent> publisher)
+    {
+        Flux<Tuple2<MuleEvent, Publisher<MuleEvent>>> flux = from(publisher).map(event -> of(event, processRequestAsStream(event)));
+        if (next != null)
+        {
+            flux = flux.map(tuple -> of(tuple.getT1(), from(applyNext(tuple.getT2()))));
+        }
+        return flux.concatMap(tuple -> from(tuple.getT2()).concatMap(event -> processResponseAsStream(event, tuple.getT1())));
+    }
+
     /**
      * Processes the request phase before the next message processor is invoked.
      *
@@ -115,9 +78,29 @@ public abstract class AbstractRequestResponseMessageProcessor extends AbstractIn
         return event;
     }
 
-    protected Publisher<MuleEvent> processRequestAsStream(MuleEvent event) throws MuleException
+    /**
+     * Processes the request phase before the next message processor is invoked.
+     *
+     * @param event event to be processed.
+     * @return result of request processing.
+     */
+    protected Publisher<MuleEvent> processRequestAsStream(MuleEvent event)
     {
-        return just(processRequest(event));
+        try
+        {
+            return just(processRequest(event));
+        }
+        catch (MuleException e)
+        {
+            if (e instanceof MessagingException)
+            {
+                throw propagate(e);
+            }
+            else
+            {
+                throw propagate(new MessagingException(event, e));
+            }
+        }
     }
 
     /**
@@ -133,9 +116,30 @@ public abstract class AbstractRequestResponseMessageProcessor extends AbstractIn
         return processResponse(response);
     }
 
-    protected  Publisher<MuleEvent> processResponseAsStream(MuleEvent response, final MuleEvent request) throws MuleException
+    /**
+     * Processes the response phase after the next message processor and it's response phase have been invoked
+     *
+     * @param response response event to be processed.
+     * @param request the request event
+     * @return result of response processing.
+     */
+    protected  Publisher<MuleEvent> processResponseAsStream(MuleEvent response, final MuleEvent request)
     {
-        return just(processResponse(response, request));
+        try
+        {
+            return just(processResponse(response, request));
+        }
+        catch (MuleException e)
+        {
+            if (e instanceof MessagingException)
+            {
+                throw propagate(e);
+            }
+            else
+            {
+                throw propagate(new MessagingException(request, e));
+            }
+        }
     }
 
     /**

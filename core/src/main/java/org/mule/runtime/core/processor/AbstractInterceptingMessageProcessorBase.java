@@ -82,10 +82,7 @@ public abstract class AbstractInterceptingMessageProcessorBase extends AbstractA
         }
         else
         {
-            if (logger.isTraceEnabled())
-            {
-                logger.trace("Invoking next MessageProcessor: '" + next.getClass().getName() + "' ");
-            }
+            logNextMessageProcessorInvocation();
             return next.process(event);
         }
     }
@@ -139,12 +136,15 @@ public abstract class AbstractInterceptingMessageProcessorBase extends AbstractA
         {
             return publisher;
         }
-        return from(publisher).doOnNext(muleEvent -> {
-            if (logger.isTraceEnabled())
-            {
-                logger.trace("Invoking next MessageProcessor: '" + next.getClass().getName() + "' ");
-            }
-        }).as(next);
+        return from(publisher).doOnNext(event -> logNextMessageProcessorInvocation()).transform(next);
+    }
+
+    private void logNextMessageProcessorInvocation()
+    {
+        if (logger.isTraceEnabled())
+        {
+            logger.trace("Invoking next MessageProcessor: '" + next.getClass().getName() + "' ");
+        }
     }
 
 }

@@ -7,9 +7,7 @@
 package org.mule.runtime.core.construct;
 
 import static org.mule.runtime.core.util.NotificationUtils.buildPathResolver;
-
 import org.mule.runtime.core.api.GlobalNameableObject;
-import org.mule.runtime.core.api.MessagingException;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.MuleEvent;
 import org.mule.runtime.core.api.MuleException;
@@ -41,7 +39,6 @@ import org.mule.runtime.core.exception.ChoiceMessagingExceptionStrategy;
 import org.mule.runtime.core.exception.RollbackMessagingExceptionStrategy;
 import org.mule.runtime.core.processor.AbstractFilteringMessageProcessor;
 import org.mule.runtime.core.processor.AbstractInterceptingMessageProcessor;
-import org.mule.runtime.core.processor.AbstractRequestResponseMessageProcessor;
 import org.mule.runtime.core.processor.chain.DefaultMessageProcessorChainBuilder;
 import org.mule.runtime.core.processor.strategy.AsynchronousProcessingStrategy;
 import org.mule.runtime.core.processor.strategy.NonBlockingProcessingStrategy;
@@ -152,25 +149,25 @@ public abstract class AbstractPipeline extends AbstractFlowConstruct implements 
 
     protected void configurePreProcessors(MessageProcessorChainBuilder builder) throws MuleException
     {
-        builder.chain(new AbstractRequestResponseMessageProcessor()
-        {
-            @Override
-            protected MuleEvent processRequest(MuleEvent event) throws MuleException
-            {
-                muleContext.getNotificationManager().fireNotification(
-                        new PipelineMessageNotification(AbstractPipeline.this, event,
-                                                        PipelineMessageNotification.PROCESS_START));
-                return super.processRequest(event);
-            }
-
-            @Override
-            protected void processFinally(MuleEvent event, MessagingException exception)
-            {
-                muleContext.getNotificationManager().fireNotification(
-                        new PipelineMessageNotification(AbstractPipeline.this, event,
-                                                        PipelineMessageNotification.PROCESS_COMPLETE, exception));
-            }
-        });
+        //builder.chain(new AbstractRequestResponseMessageProcessor()
+        //{
+        //    @Override
+        //    protected MuleEvent processRequest(MuleEvent event) throws MuleException
+        //    {
+        //        muleContext.getNotificationManager().fireNotification(
+        //                new PipelineMessageNotification(AbstractPipeline.this, event,
+        //                                                PipelineMessageNotification.PROCESS_START));
+        //        return super.processRequest(event);
+        //    }
+        //
+        //    @Override
+        //    protected void processFinally(MuleEvent event, MessagingException exception)
+        //    {
+        //        muleContext.getNotificationManager().fireNotification(
+        //                new PipelineMessageNotification(AbstractPipeline.this, event,
+        //                                                PipelineMessageNotification.PROCESS_COMPLETE, exception));
+        //    }
+        //});
     }
 
     protected void configurePostProcessors(MessageProcessorChainBuilder builder) throws MuleException

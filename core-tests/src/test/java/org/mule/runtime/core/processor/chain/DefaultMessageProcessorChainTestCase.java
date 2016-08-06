@@ -1108,7 +1108,7 @@ public class DefaultMessageProcessorChainTestCase extends AbstractMuleContextTes
         }
 
         @Override
-        protected MuleEvent processBlocking(MuleEvent event) throws MuleException
+        public MuleEvent process(MuleEvent event) throws MuleException
         {
             if (stopProcessing)
             {
@@ -1116,7 +1116,7 @@ public class DefaultMessageProcessorChainTestCase extends AbstractMuleContextTes
             }
             else
             {
-                return super.processBlocking(event);
+                return super.process(event);
 
             }
         }
