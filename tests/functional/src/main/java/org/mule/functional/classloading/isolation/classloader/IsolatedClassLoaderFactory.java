@@ -84,7 +84,7 @@ public class IsolatedClassLoaderFactory {
     ClassLoaderLookupPolicy childClassLoaderLookupPolicy = testContainerClassLoaderFactory.getContainerClassLoaderLookupPolicy();
 
     List<ArtifactClassLoader> pluginsArtifactClassLoaders = new ArrayList<>();
-    if (!artifactUrlClassification.getPluginClassificationUrls().isEmpty()) {
+    if (!artifactUrlClassification.getPluginUrlClassifications().isEmpty()) {
       classLoader = createPluginClassLoaders(classLoader, childClassLoaderLookupPolicy, artifactUrlClassification,
                                              pluginsArtifactClassLoaders);
     }
@@ -149,7 +149,7 @@ public class IsolatedClassLoaderFactory {
     // the extension xsd that depends on that one.
     pluginClassLoaders.add(new MuleArtifactClassLoader("sharedLibs", new URL[0], parent, childClassLoaderLookupPolicy));
 
-    for (PluginUrlClassification pluginUrlClassification : artifactUrlClassification.getPluginClassificationUrls()) {
+    for (PluginUrlClassification pluginUrlClassification : artifactUrlClassification.getPluginUrlClassifications()) {
       logClassLoaderUrls("PLUGIN (" + pluginUrlClassification.getName() + ")", pluginUrlClassification.getUrls());
       MuleArtifactClassLoader pluginCL =
           new MuleArtifactClassLoader(pluginUrlClassification.getName(), pluginUrlClassification.getUrls().toArray(new URL[0]),
