@@ -8,8 +8,10 @@ package org.mule.runtime.module.cxf.transport;
 
 import static org.apache.cxf.message.Message.DECOUPLED_CHANNEL_MESSAGE;
 import static org.mule.runtime.api.metadata.MediaType.XML;
+
 import org.mule.runtime.api.metadata.DataType;
 import org.mule.runtime.api.metadata.MediaType;
+import org.mule.runtime.core.DefaultMessageExecutionContext;
 import org.mule.runtime.core.DefaultMuleEvent;
 import org.mule.runtime.core.NonBlockingVoidMuleEvent;
 import org.mule.runtime.core.OptimizedRequestContext;
@@ -137,7 +139,8 @@ public class MuleUniversalConduit extends AbstractConduit {
       String url = setupURL(message);
 
       try {
-        event = new DefaultMuleEvent(muleMsg, (FlowConstruct) null);
+        event = new DefaultMuleEvent(new DefaultMessageExecutionContext(configuration.getMuleContext().getUniqueIdString(), null),
+                                     muleMsg, (FlowConstruct) null);
       } catch (Exception e) {
         throw new Fault(e);
       }

@@ -20,6 +20,7 @@ import static org.mule.runtime.core.util.IOUtils.toMuleMessagePart;
 
 import org.mule.runtime.api.message.MultiPartPayload;
 import org.mule.runtime.api.metadata.MediaType;
+import org.mule.runtime.core.DefaultMessageExecutionContext;
 import org.mule.runtime.core.DefaultMuleEvent;
 import org.mule.runtime.core.RequestContext;
 import org.mule.runtime.core.api.MuleMessage;
@@ -127,7 +128,8 @@ public class DefaultMultiPartPayloadTestCase extends AbstractMuleContextTestCase
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
-    RequestContext.setEvent(new DefaultMuleEvent(message, getTestFlow()));
+    RequestContext.setEvent(new DefaultMuleEvent(new DefaultMessageExecutionContext(muleContext.getUniqueIdString(), null),
+                                                 message, getTestFlow()));
     oos.writeObject(message);
     oos.flush();
     ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
@@ -151,7 +153,8 @@ public class DefaultMultiPartPayloadTestCase extends AbstractMuleContextTestCase
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
-    RequestContext.setEvent(new DefaultMuleEvent(message, getTestFlow()));
+    RequestContext.setEvent(new DefaultMuleEvent(new DefaultMessageExecutionContext(muleContext.getUniqueIdString(), null),
+                                                 message, getTestFlow()));
     oos.writeObject(message);
     oos.flush();
     ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
