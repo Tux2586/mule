@@ -44,13 +44,13 @@ public abstract class AbstractNonBlockingMessageProcessor extends AbstractAnnota
                             @Override
                             public void onCompletion(MuleEvent event, ExceptionCallback<MuleEvent, Exception> exceptionCallback)
                             {
-                                emmiter.complete(event);
+                                emmiter.success(event);
                             }
 
                             @Override
                             public void onFailure(Throwable throwable)
                             {
-                                emmiter.fail(throwable);
+                                emmiter.error(throwable);
                             }
                         });
             }
