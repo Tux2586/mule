@@ -936,7 +936,7 @@ public class CoreComponentBuildingDefinitionProvider implements ComponentBuildin
                         .build()};
         return baseDefinition.copy()
                 .withTypeDefinition(fromType(transformerClass))
-                .withObjectFactoryType(ConfigurableObjectFactory.class)
+                .withObjectFactoryType(new ConfigurableObjectFactory<>().getClass())
                 .withSetterParameterDefinition("factory", fromFixedValue(configurableInstanceFactory).build())
                 .withSetterParameterDefinition("commonConfiguratorType", fromFixedValue(TransformerConfigurator.class).build())
                 .withSetterParameterDefinition("parameters", fromMultipleDefinitions(addAll(commonTransformerParameters, configurationAttributes))
