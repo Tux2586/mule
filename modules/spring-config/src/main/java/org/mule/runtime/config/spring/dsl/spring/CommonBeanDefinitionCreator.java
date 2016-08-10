@@ -24,11 +24,11 @@ import static org.springframework.beans.factory.support.BeanDefinitionBuilder.ge
 import static org.springframework.beans.factory.support.BeanDefinitionBuilder.rootBeanDefinition;
 import org.mule.runtime.api.meta.AnnotatedObject;
 import org.mule.runtime.config.spring.dsl.api.ComponentBuildingDefinition;
-import org.mule.runtime.config.spring.dsl.model.ApplicationModel;
 import org.mule.runtime.config.spring.dsl.model.ComponentIdentifier;
 import org.mule.runtime.config.spring.dsl.model.ComponentModel;
 import org.mule.runtime.config.spring.dsl.processor.ObjectTypeVisitor;
 import org.mule.runtime.config.spring.dsl.processor.xml.XmlCustomAttributeHandler;
+import org.mule.runtime.core.api.MuleRuntimeException;
 import org.mule.runtime.core.api.routing.filter.Filter;
 import org.mule.runtime.core.api.security.SecurityFilter;
 import org.mule.runtime.core.processor.SecurityFilterMessageProcessor;
@@ -37,8 +37,6 @@ import org.mule.runtime.core.util.ClassUtils;
 
 import com.google.common.collect.ImmutableSet;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,15 +45,10 @@ import java.util.stream.Collectors;
 import javax.xml.namespace.QName;
 
 import org.springframework.beans.PropertyValue;
-import org.springframework.beans.factory.SmartFactoryBean;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.RootBeanDefinition;
-import org.springframework.cglib.proxy.Callback;
-import org.springframework.cglib.proxy.Enhancer;
-import org.springframework.cglib.proxy.MethodInterceptor;
-import org.springframework.cglib.proxy.MethodProxy;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
@@ -77,6 +70,7 @@ public class CommonBeanDefinitionCreator extends BeanDefinitionCreator
             .add(DEFAULT_ES_ELEMENT_IDENTIFIER)
             .build();
 
+    private final ObjectFactoryClassRepository objectFactoryClassRepository = new ObjectFactoryClassRepository();
     private BeanDefinitionPostProcessor beanDefinitionPostProcessor;
 
     public CommonBeanDefinitionCreator()
@@ -139,9 +133,9 @@ public class CommonBeanDefinitionCreator extends BeanDefinitionCreator
                 .filter(cdm -> cdm.getIdentifier().equals(ANNOTATIONS_ELEMENT_IDENTIFIER))
                 .findFirst()
                 .ifPresent(annotationsCdm ->
-                    annotationsCdm.getInnerComponents().forEach(
-                            annotationCdm -> previousAnnotations.put(new QName(from(annotationCdm).getNamespaceUri(), annotationCdm.getIdentifier().getName()), annotationCdm.getTextContent())
-                    )
+                                   annotationsCdm.getInnerComponents().forEach(
+                                           annotationCdm -> previousAnnotations.put(new QName(from(annotationCdm).getNamespaceUri(), annotationCdm.getIdentifier().getName()), annotationCdm.getTextContent())
+                                   )
                 );
     }
 
@@ -170,76 +164,44 @@ public class CommonBeanDefinitionCreator extends BeanDefinitionCreator
 
     private BeanDefinitionBuilder createBeanDefinitionBuilderFromObjectFactory(final ComponentModel componentModel, final ComponentBuildingDefinition componentBuildingDefinition)
     {
-        /*
-           We need this to allow spring create the object using a FactoryBean but using the object factory setters and getters so
-           we create as FactoryBean a dynamic class that will have the same attributes and methods as the ObjectFactory that the user
-           defined. This way our API does not expose spring specific classes.
-         */
         ObjectTypeVisitor objectTypeVisitor = new ObjectTypeVisitor(componentModel);
         componentBuildingDefinition.getTypeDefinition().visit(objectTypeVisitor);
         BeanDefinitionBuilder beanDefinitionBuilder;
         Class<?> objectFactoryType = componentBuildingDefinition.getObjectFactoryType();
-        Enhancer enhancer = new Enhancer();
-        //Use SmartFactoryBean since it's the only way to force spring to pre-instantiate FactoryBean for singletons
-        enhancer.setInterfaces(new Class[] {SmartFactoryBean.class});
-        enhancer.setSuperclass(objectFactoryType);
-        enhancer.setCallbackType(MethodInterceptor.class);
-        //If cache is used then the same class instance with the same callback instance will be repeated for the
-        //same ObjectFactory which prevents reusing the same ObjectFactory class for different components
-        //enhancer.setUseCache(false);
-        Class factoryBeanClass = enhancer.createClass();
-        Enhancer.registerStaticCallbacks(factoryBeanClass, new Callback[] {
-                new MethodInterceptor()
-                {
-                    @Override
-                    public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable
-                    {
-                        if (method.getName().equals("isSingleton"))
-                        {
-                            return !componentBuildingDefinition.isPrototype();
-                        }
-                        if (method.getName().equals("getObjectType"))
-                        {
-                            return objectTypeVisitor.getType();
-                        }
-                        if (method.getName().equals("getObject"))
-                        {
-                            Object createdInstance = proxy.invokeSuper(obj, args);
-                            injectSpringProperties(componentModel, createdInstance);
-                            return createdInstance;
-                        }
-                        if (method.getName().equals("isPrototype"))
-                        {
-                            return componentBuildingDefinition.isPrototype();
-                        }
-                        if (method.getName().equals("isEagerInit"))
-                        {
-                            return !componentModel.getBeanDefinition().isLazyInit();
-                        }
-                        return proxy.invokeSuper(obj, args);
-                    }
-                }
-        });
+        Class factoryBeanClass = objectFactoryClassRepository.getObjectFactoryClass(componentBuildingDefinition,
+                                                                                    objectFactoryType,
+                                                                                    objectTypeVisitor.getType(),
+                                                                                    () -> componentModel.getBeanDefinition().isLazyInit(),
+                                                                                    object -> {
+                                                                                        injectSpringProperties(componentModel, object);
+                                                                                    });
         beanDefinitionBuilder = rootBeanDefinition(factoryBeanClass);
         return beanDefinitionBuilder;
     }
 
-    private void injectSpringProperties(ComponentModel componentModel, Object createdInstance) throws InvocationTargetException, IllegalAccessException
+    private void injectSpringProperties(ComponentModel componentModel, Object createdInstance)
     {
-        ComponentIdentifier identifier = componentModel.getIdentifier();
-        if (identifier.equals(CUSTOM_TRANSFORMER_IDENTIFIER))
+        try
         {
-            Map<String, Object> propertyValues = componentModel.getInnerComponents()
-                    .stream()
-                    .filter(innerComponent -> {
-                        ComponentIdentifier childIdentifier = innerComponent.getIdentifier();
-                        return childIdentifier.equals(SPRING_PROPERTY_IDENTIFIER) || childIdentifier.equals(MULE_PROPERTY_IDENTIFIER);
-                    })
-                    .collect(Collectors.toMap(springComponent -> getPropertyValueFromPropertyComponent(springComponent).getName(), springComponent -> getPropertyValueFromPropertyComponent(springComponent).getValue()));
-            for (String propertyName : propertyValues.keySet())
+            ComponentIdentifier identifier = componentModel.getIdentifier();
+            if (identifier.equals(CUSTOM_TRANSFORMER_IDENTIFIER))
             {
-                copyProperty(createdInstance, propertyName, propertyValues.get(propertyName));
+                Map<String, Object> propertyValues = componentModel.getInnerComponents()
+                        .stream()
+                        .filter(innerComponent -> {
+                            ComponentIdentifier childIdentifier = innerComponent.getIdentifier();
+                            return childIdentifier.equals(SPRING_PROPERTY_IDENTIFIER) || childIdentifier.equals(MULE_PROPERTY_IDENTIFIER);
+                        })
+                        .collect(Collectors.toMap(springComponent -> getPropertyValueFromPropertyComponent(springComponent).getName(), springComponent -> getPropertyValueFromPropertyComponent(springComponent).getValue()));
+                for (String propertyName : propertyValues.keySet())
+                {
+                    copyProperty(createdInstance, propertyName, propertyValues.get(propertyName));
+                }
             }
+        }
+        catch (Exception e)
+        {
+            throw new MuleRuntimeException(e);
         }
     }
 
@@ -284,7 +246,7 @@ public class CommonBeanDefinitionCreator extends BeanDefinitionCreator
     public static List<PropertyValue> getPropertyValueFromPropertiesComponent(ComponentModel propertyComponentModel)
     {
         List<PropertyValue> propertyValues = new ArrayList<>();
-        propertyComponentModel.getInnerComponents().stream().forEach( entryComponentModel -> {
+        propertyComponentModel.getInnerComponents().stream().forEach(entryComponentModel -> {
             propertyValues.add(new PropertyValue(entryComponentModel.getParameters().get("key"), entryComponentModel.getParameters().get("value")));
         });
         return propertyValues;
@@ -365,6 +327,7 @@ public class CommonBeanDefinitionCreator extends BeanDefinitionCreator
 
     public interface BeanDefinitionPostProcessor
     {
+
         void postProcess(ComponentModel componentModel, AbstractBeanDefinition beanDefinition);
     }
 
